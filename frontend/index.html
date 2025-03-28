@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Extractor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Invoice Extractor</h1>
+            <p class="subtitle">Extract structured data from invoices effortlessly.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">API Key</label>
+            <input type="text" id="apiKey" placeholder="Enter your LLM API key" required>
+        </div>
+
+        <div class="form-group">
+            <label for="fileInput">Upload PDF Files</label>
+            <div class="file-input">
+                <input type="file" id="fileInput" accept=".pdf" multiple>
+                <span class="file-hint">You can select multiple PDF files.</span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="outputFolderPath">Output Folder</label>
+            <div class="folder-input">
+                <input type="text" id="outputFolderPath" placeholder="No folder selected" readonly>
+                <button id="outputFolderButton">Browse</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="filename">Output Filename</label>
+            <input type="text" id="filename" placeholder="invoice_data.xlsx">
+        </div>
+
+        <button id="processButton">Process PDFs</button>
+
+        <div id="output" class="output-box">
+            <p>Results will appear here...</p>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

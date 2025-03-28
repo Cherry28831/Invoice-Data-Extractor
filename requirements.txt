@@ -1,0 +1,9 @@
+pdfplumber
+pdf2image
+pytesseract
+google-generativeai
+pandas
+openpyxl
+tkinter
+Pillow
+pyttsx3
