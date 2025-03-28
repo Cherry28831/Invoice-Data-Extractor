@@ -21,9 +21,12 @@
       "output": "dist"
     },
     "files": [
-      "**/*",
-      "!node_modules"
+      "backend/**/*",
+      "frontend/**/*",
+      "main.js",
+      "package.json"
     ],
+    "asar": false,
     "win": {
       "target": "nsis"
     },
