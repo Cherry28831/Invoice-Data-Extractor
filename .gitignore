@@ -1,0 +1,7 @@
+# Ignore build and dependency files
+dist/
+node_modules/
+*.exe
+*.dll
+*.log
+.env
