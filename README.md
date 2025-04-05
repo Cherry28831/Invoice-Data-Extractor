@@ -23,7 +23,7 @@ A lightweight yet powerful desktop app that extracts data from invoices in **PDF
 
 ### 🔽 Download the Executable
 
-[⬇ Click here to download the `.exe` file (v1.0.0)](https://github.com/Cherry28831/Invoice-Data-Extractor/releases/download/v1.0.0/invoice_extractor.exe)
+[⬇ Click here to download the `.exe` file (v1.0.0)](https://github.com/Cherry28831/Invoice-Data-Extractor/releases/tag/v1.0.0)
 
 ---
 
