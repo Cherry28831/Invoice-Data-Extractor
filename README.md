@@ -14,7 +14,26 @@ A lightweight yet powerful desktop app that extracts data from invoices in **PDF
 - 📄 Supports **PDF** and **JPG** invoice formats
 - 🧠 Uses `pytesseract`, `pdfplumber`, and `pdf2image`
 - 📊 Exports structured data to **Excel**
-- 🖼️ Intuitive **Tkinter GUI** — no coding needed
+- 🖼️ Intuitive **Tkinter GUI** 
+
+---
+
+## 🧠 Tech Stack & Libraries Used
+
+- [`pdfplumber`](https://github.com/jsvine/pdfplumber)
+- [`pdf2image`](https://github.com/Belval/pdf2image)
+- [`pytesseract`](https://github.com/madmaze/pytesseract)
+- [`google-generativeai`](https://github.com/google/generative-ai-python)
+- `tkinter` (GUI)
+- `pandas`, `openpyxl` (Excel generation)
+
+---
+
+🧠 How It Works
+- PDFs are read using pdfplumber. If text extraction fails, it switches to OCR using pytesseract.
+- Extracted text is sent to the Gemini API with a prompt for field extraction.
+- Parsed response is saved to combined_data.json and converted to an Excel file.
+- All weights are converted to kilograms.
 
 ---
 
@@ -44,15 +63,10 @@ This app requires access to Google's Generative AI API (Gemini). You can get a *
 
 ---
 
-## 🧠 Tech Stack & Libraries Used
-
-- [`pdfplumber`](https://github.com/jsvine/pdfplumber)
-- [`pdf2image`](https://github.com/Belval/pdf2image)
-- [`pytesseract`](https://github.com/madmaze/pytesseract)
-- [`google-generativeai`](https://github.com/google/generative-ai-python)
-- `tkinter` (GUI)
-- `Pillow` (Image handling)
-- `pandas`, `openpyxl` (Excel generation)
+📧 Output
+- combined_data.json: Raw structured data
+- combined_invoice_data.xlsx: Final Excel export
+- JSON is deleted after Excel is generated.
 
 ---
 
