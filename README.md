@@ -14,7 +14,6 @@ A lightweight yet powerful desktop app that extracts data from invoices in **PDF
 - 📄 Supports **PDF** and **JPG** invoice formats
 - 🧠 Uses `pytesseract`, `pdfplumber`, and `pdf2image`
 - 📊 Exports structured data to **Excel**
-- 🗣️ Voice feedback using `pyttsx3`
 - 🖼️ Intuitive **Tkinter GUI** — no coding needed
 
 ---
@@ -53,7 +52,6 @@ This app requires access to Google's Generative AI API (Gemini). You can get a *
 - [`google-generativeai`](https://github.com/google/generative-ai-python)
 - `tkinter` (GUI)
 - `Pillow` (Image handling)
-- `pyttsx3` (Voice feedback)
 - `pandas`, `openpyxl` (Excel generation)
 
 ---
