@@ -77,3 +77,9 @@ git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
 cd Invoice-Data-Extractor
 pip install -r requirements.txt
 npm run dist  # if using Electron or similar packaging tools
+```
+
+---
+
+### Built with 💙 by Cherry28831, itisar-345 and Akshita3104
+#### Open for contributions, forks, and feedback!
