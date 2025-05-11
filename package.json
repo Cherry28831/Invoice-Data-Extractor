@@ -6,8 +6,7 @@
   "scripts": {
     "start": "electron .",
     "package": "electron-builder",
-    "dist": "electron-builder --win",
-    "postinstall": "python3 -m pip install -r requirements.txt || echo 'Python or pip not available'"
+    "dist": "electron-builder --win"
   },
   "author": "Your Name",
   "license": "MIT",
