@@ -25,7 +25,6 @@
       "backend/**/*",
       "frontend/**/*",
       "main.js",
-      "requirements.txt",
       "package.json"
     ],
     "asar": false,
