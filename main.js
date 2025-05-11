@@ -1,32 +1,12 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
 
 console.log(`Current working directory: ${process.cwd()}`); // Debug log
 
 let mainWindow;
 
-function installPythonDeps() {
-    const reqPath = path.join(__dirname, 'requirements.txt');
-
-    try {
-        if (fs.existsSync(reqPath)) {
-            console.log('Installing Python dependencies from requirements.txt...');
-            execSync(`python3 -m pip install --upgrade pip`, { stdio: 'inherit' });
-            execSync(`python3 -m pip install -r "${reqPath}"`, { stdio: 'inherit' });
-            console.log('Dependencies installed successfully.');
-        } else {
-            console.warn('requirements.txt not found.');
-        }
-    } catch (err) {
-        console.error('Failed to install Python dependencies:', err);
-    }
-}
-
 app.whenReady().then(() => {
-    installPythonDeps();
-
     mainWindow = new BrowserWindow({
         width: 900,
         height: 700,
@@ -55,7 +35,7 @@ app.whenReady().then(() => {
         console.log(`Backend script path: ${backendPath}`); // Debug log
 
         // Pass all file paths to the backend script
-        const pythonProcess = spawn('python3', [backendPath, ...filePaths, apiKey, outputFolder, filename]);
+        const pythonProcess = spawn('python', [backendPath, ...filePaths, apiKey, outputFolder, filename]);
 
         let outputData = '';
         let errorData = '';
