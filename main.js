@@ -16,7 +16,7 @@ app.whenReady().then(() => {
         }
     });
 
-    mainWindow.loadFile('frontend/index.html');
+    mainWindow.loadFile(path.join(__dirname, 'frontend', 'index.html'));
 
     ipcMain.handle('select-output-folder', async () => {
         const result = await dialog.showOpenDialog(mainWindow, {
@@ -30,28 +30,28 @@ app.whenReady().then(() => {
         console.log(`Processing PDFs: ${filePaths} with API Key: ${apiKey}`);
         console.log(`Saving output to: ${path.join(outputFolder, filename)}`);
 
-        // Correct path to backend.py
-        const backendPath = path.join(__dirname, 'backend', 'backend.py');
+        // Path to the standalone .exe you built
+        const backendPath = path.join(__dirname, 'backend', 'invoice-backend.exe');
         console.log(`Backend script path: ${backendPath}`); // Debug log
 
-        // Pass all file paths to the backend script
-        const pythonProcess = spawn('python', [backendPath, ...filePaths, apiKey, outputFolder, filename]);
+        // Arguments that your Python script expects
+        const args = [...filePaths, apiKey, outputFolder, filename];
+
+        // Spawn the executable directly (no 'python' command)
+        const backendProcess = spawn(backendPath, args);
 
         let outputData = '';
         let errorData = '';
 
-        // Capture stdout from Python script
-        pythonProcess.stdout.on('data', (data) => {
+        backendProcess.stdout.on('data', (data) => {
             outputData += data.toString();
         });
 
-        // Capture stderr (error output)
-        pythonProcess.stderr.on('data', (data) => {
+        backendProcess.stderr.on('data', (data) => {
             errorData += data.toString();
         });
 
-        // Handle process completion
-        pythonProcess.on('close', (code) => {
+        backendProcess.on('close', (code) => {
             if (code === 0) {
                 console.log(`Processing Complete: ${outputData}`);
                 event.reply('processing-result', { success: true, output: outputData.trim() });

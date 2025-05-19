@@ -12,7 +12,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^25.9.8",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "electron-packager": "^17.1.2"
   },
   "build": {
     "appId": "com.invoiceapp",
@@ -318,5 +319,13 @@
     "yocto-queue": "^0.1.0",
     "zip-stream": "^4.1.1"
   },
-  "keywords": []
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cherry28831/Invoice-Data-Extractor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Cherry28831/Invoice-Data-Extractor/issues"
+  },
+  "homepage": "https://github.com/Cherry28831/Invoice-Data-Extractor#readme"
 }

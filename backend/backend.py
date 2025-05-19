@@ -52,24 +52,23 @@ def process_with_gemini(text, api_key):
     1. **Goods Description**: The name or description of the product. Extract the exact wording used in the text.
     2. **HSN/SAC Code**: The HSN or SAC code for the product. Extract the numerical code as mentioned.
     3. **Quantity**: The quantity of the product. Extract only the numerical value. If the quantity is unclear or contains inconsistencies (e.g., spaces or mixed formats), extract the first numerical value as the quantity and ignore the rest.
-    4. **Weight**: The weight of the product, including the unit (kg, qtl, tons). Retain the unit as mentioned in the invoice. If no weight is mentioned, set it to "N/A".
-    5. **Rate**: The rate per single unit(e.g., per bag, per pack, or per unit). Ensure it is a monetary value (e.g., ₹, $, etc.), not a weight or quantity. Do not extract the total amount for the quantity. This is the cost for one unit of the item.
-    6. **Amount**: The total amount for the product. This is the total cost for all units of the item. Ensure it is a monetary value. Do not extract the final/total amount of the entire invoice.
+    4. **Weight**: The weight of the product, including the unit (e.g., kg, qtl, tons, MT, gms, quintal, litre). Retain the unit as mentioned. If no weight is mentioned, set it to "N/A". Accept various formats like "50 KG", "0.5MT", "10 quintal", etc.
+    5. **Rate**: The rate per single unit (e.g., per kg, per bag, per pack, per MT, per qtl). Ensure it is a monetary value (₹, Rs., INR, $, USD, etc.) followed by the unit. Normalize various rate formats, even if they are written as "Rate: 2200/MT", "Rs. 50 per kg", "₹70/qtl" etc. Extract the full string showing both the amount and the unit (e.g., "₹2200/MT", "Rs.50 per kg").
+    6. **Amount**: The total amount for the product. This is the total cost for all units of the item. Ensure it is a monetary value. Do not extract the final total of the entire invoice.
     7. **Company Name**: The name of the company issuing the invoice. Extract the exact name as mentioned.
     8. **Invoice Number**: The invoice number. Extract the exact alphanumeric code.
     9. **FSSAI Number**: The FSSAI number (if applicable). Extract the exact number. If two FSSAI numbers are present, take only the buyer's FSSAI number.
-    10. **Date of Invoice**: The date of the invoice in DD/MM/YYYY format. Extract the date exactly as mentioned.
+    10. **Date of Invoice**: Extract the date in **DD/MM/YYYY format**, even if it is mentioned in another format such as "DD-MM-YYYY", "YYYY/MM/DD", or "MM/DD/YYYY". Standardize the output to DD/MM/YYYY and retain the correct date.
 
     **Rules**:
     - If a field is missing or unclear, set it to "N/A". Do not infer or guess values.
-    - Retain the exact wording, units, and formatting as mentioned in the text.
+    - Retain the exact wording, units, and formatting as mentioned in the text unless otherwise specified.
     - If multiple products are listed, extract the details for each product separately.
     - If the text contains irrelevant information or noise, ignore it and focus only on the relevant details.
     - Ensure that the extracted data is accurate and matches the text exactly.
 
     **Text**:
     {text}
-
     Return the result as a list of JSON objects, one for each product in the invoice.
     """
     try:
