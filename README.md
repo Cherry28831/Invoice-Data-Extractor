@@ -14,7 +14,8 @@ A lightweight yet powerful desktop app that extracts data from invoices in **PDF
 - 📄 Supports **PDF** and **JPG** invoice formats
 - 🧠 Uses `pytesseract`, `pdfplumber`, and `pdf2image`
 - 📊 Exports structured data to **Excel**
-- 🖼️ Intuitive **Tkinter GUI** 
+- 🖼️ Intuitive **Tkinter GUI**
+- ⚙️ Backend logic is bundled — **no additional installation needed!**
 
 ---
 
@@ -34,6 +35,8 @@ A lightweight yet powerful desktop app that extracts data from invoices in **PDF
 - Extracted text is sent to the Gemini API with a prompt for field extraction.
 - Parsed response is saved to combined_data.json and converted to an Excel file.
 - All weights are converted to kilograms.
+
+> ✅ Since we bundled `backend.py` into the final executable, there is **no need to install any libraries** or set up Python locally. Everything runs from the `.exe` — plug and play!
 
 ---
 
@@ -64,22 +67,17 @@ This app requires access to Google's Generative AI API (Gemini). You can get a *
 ---
 
 📧 Output
-- combined_data.json: Raw structured data
-- combined_invoice_data.xlsx: Final Excel export
+- `combined_data.json`: Raw structured data
+- `combined_invoice_data.xlsx`: Final Excel export
 - JSON is deleted after Excel is generated.
 
 ---
 
 ## 🧪 Want to Build from Source?
 
-```bash
 git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
 cd Invoice-Data-Extractor
 pip install -r requirements.txt
 npm run dist  # if using Electron or similar packaging tools
-```
 
----
-
-### Built with 💙 by Cherry28831, itisar-345 and Akshita3104
-#### Open for contributions, forks, and feedback!
+Open for contributions, forks, and feedback!
