@@ -2,19 +2,59 @@ import os
 import pdfplumber
 from pdf2image import convert_from_path
 import pytesseract
-import google.generativeai as genai
+import requests
 import pandas as pd
 import json
 import sys
+from PIL import Image, ImageEnhance, ImageFilter
+import cv2
+import numpy as np
 
 
-# ===================== PDF Text Extraction Functions =====================
-def extract_text_from_image(pdf_path):
+# ===================== Enhanced OCR Functions =====================
+def preprocess_image(image):
+    """Enhanced image preprocessing for better OCR"""
+    # Convert PIL to OpenCV format
+    img_array = np.array(image)
+    
+    # Convert to grayscale
+    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+    
+    # Apply denoising
+    denoised = cv2.fastNlMeansDenoising(gray)
+    
+    # Enhance contrast using CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    enhanced = clahe.apply(denoised)
+    
+    # Apply Gaussian blur to reduce noise
+    blurred = cv2.GaussianBlur(enhanced, (1, 1), 0)
+    
+    # Threshold to get better black and white image
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    # Convert back to PIL Image
+    return Image.fromarray(thresh)
+
+
+def extract_text_from_image_enhanced(pdf_path):
+    """Enhanced OCR with preprocessing"""
     text = ""
     try:
-        images = convert_from_path(pdf_path)
+        # Convert PDF to images with higher DPI
+        images = convert_from_path(pdf_path, dpi=300)
+        
         for image in images:
-            text += pytesseract.image_to_string(image) + "\n"
+            # Preprocess image for better OCR
+            processed_image = preprocess_image(image)
+            
+            # Use custom OCR config for better results
+            custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,/-:()₹$@#%&*+=[]{}|\\;\"<>?~`!^_'
+            
+            # Extract text with enhanced settings
+            page_text = pytesseract.image_to_string(processed_image, config=custom_config)
+            text += page_text + "\n"
+            
     except Exception as e:
         print(f"Error extracting text from image: {e}")
     return text
@@ -34,60 +74,121 @@ def extract_full_text(pdf_path):
 
 
 def extract_text_from_pdf(pdf_path):
+    """Try pdfplumber first, then enhanced OCR"""
     text = extract_full_text(pdf_path)
     if not text.strip():
-        print("No text found with pdfplumber. Switching to OCR...")
-        text = extract_text_from_image(pdf_path)
+        print("No text found with pdfplumber. Using enhanced OCR...")
+        text = extract_text_from_image_enhanced(pdf_path)
     return text
 
 
-# ===================== Gemini API Processing Function =====================
-def process_with_gemini(text, api_key):
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+# ===================== Groq API Processing Function =====================
+def process_with_groq(text, api_key):
+    """Process text using Groq API via requests"""
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    enhanced_prompt = f"""
+You are an expert invoice data extraction AI. Extract structured data from the following invoice text with high accuracy.
 
-    prompt = f"""
-    You are an expert in extracting structured data from invoices, even when the text is messy or unstructured. Extract the following details from the text below:
+EXTRACT THESE FIELDS:
+1. **company_name**: Issuing company name (exact text)
+2. **invoice_number**: Invoice/bill number (alphanumeric)
+3. **invoice_date**: Date in DD/MM/YYYY format
+4. **fssai_number**: FSSAI license number (if present)
+5. **items**: Array of products with:
+   - **description**: Product name/description
+   - **hsn_code**: HSN/SAC code (numbers only)
+   - **quantity**: Numeric quantity only
+   - **weight**: Weight with unit (kg/qtl/MT/gms/tons)
+   - **rate**: Price per unit with currency (₹X/unit)
+   - **amount**: Total amount with currency
 
-    1. **Goods Description**: The name or description of the product. Extract the exact wording used in the text.
-    2. **HSN/SAC Code**: The HSN or SAC code for the product. Extract the numerical code as mentioned.
-    3. **Quantity**: The quantity of the product. Extract only the numerical value. If the quantity is unclear or contains inconsistencies (e.g., spaces or mixed formats), extract the first numerical value as the quantity and ignore the rest.
-    4. **Weight**: The weight of the product, including the unit (e.g., kg, qtl, tons, MT, gms, quintal, litre). Retain the unit as mentioned. If no weight is mentioned, set it to "N/A". Accept various formats like "50 KG", "0.5MT", "10 quintal", etc.
-    5. **Rate**: The rate per single unit (e.g., per kg, per bag, per pack, per MT, per qtl). Ensure it is a monetary value (₹, Rs., INR, $, USD, etc.) followed by the unit. Normalize various rate formats, even if they are written as "Rate: 2200/MT", "Rs. 50 per kg", "₹70/qtl" etc. Extract the full string showing both the amount and the unit (e.g., "₹2200/MT", "Rs.50 per kg").
-    6. **Amount**: The total amount for the product. This is the total cost for all units of the item. Ensure it is a monetary value. Do not extract the final total of the entire invoice.
-    7. **Company Name**: The name of the company issuing the invoice. Extract the exact name as mentioned.
-    8. **Invoice Number**: The invoice number. Extract the exact alphanumeric code.
-    9. **FSSAI Number**: The FSSAI number (if applicable). Extract the exact number. If two FSSAI numbers are present, take only the buyer's FSSAI number.
-    10. **Date of Invoice**: Extract the date in **DD/MM/YYYY format**, even if it is mentioned in another format such as "DD-MM-YYYY", "YYYY/MM/DD", or "MM/DD/YYYY". Standardize the output to DD/MM/YYYY and retain the correct date.
+RULES:
+- Return ONLY valid JSON array format
+- Use "N/A" for missing fields
+- Extract exact text, don't infer
+- For multiple items, create separate objects
+- Ensure all numeric values are clean
+- Standardize dates to DD/MM/YYYY
+- Include currency symbols in amounts
 
-    **Rules**:
-    - If a field is missing or unclear, set it to "N/A". Do not infer or guess values.
-    - Retain the exact wording, units, and formatting as mentioned in the text unless otherwise specified.
-    - If multiple products are listed, extract the details for each product separately.
-    - If the text contains irrelevant information or noise, ignore it and focus only on the relevant details.
-    - Ensure that the extracted data is accurate and matches the text exactly.
+INVOICE TEXT:
+{text}
 
-    **Text**:
-    {text}
-    Return the result as a list of JSON objects, one for each product in the invoice.
-    """
+Return as JSON array:
+"""
+    
+    payload = {
+        "messages": [
+            {
+                "role": "user",
+                "content": enhanced_prompt
+            }
+        ],
+        "model": "llama-3.1-8b-instant",
+        "temperature": 0.3,
+        "max_tokens": 3000
+    }
+    
     try:
-        response = model.generate_content(prompt)
-        print(f"API Response: {response.text}")  # Debug log
-        return response.text
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        if response.status_code == 200:
+            result = response.json()
+            content = result['choices'][0]['message']['content']
+            print(f"Groq API Response: {content}")
+            return content
+        else:
+            error_msg = f"Groq API Error {response.status_code}: {response.text}"
+            print(error_msg)
+            return error_msg
+            
+    except UnicodeEncodeError as e:
+        # Handle Unicode encoding issues
+        print(f"Unicode encoding error: {e}")
+        # Remove problematic characters and retry
+        clean_text = text.encode('ascii', 'ignore').decode('ascii')
+        clean_prompt = enhanced_prompt.replace(text, clean_text).replace('₹', 'Rs.')
+        
+        clean_payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": clean_prompt
+                }
+            ],
+            "model": "llama-3.1-8b-instant",
+            "temperature": 0.3,
+            "max_tokens": 3000
+        }
+        
+        try:
+            response = requests.post(url, headers=headers, json=clean_payload, timeout=60)
+            if response.status_code == 200:
+                result = response.json()
+                content = result['choices'][0]['message']['content']
+                print(f"Groq API Response (cleaned): {content}")
+                return content
+            else:
+                return f"Groq API Error {response.status_code}: {response.text}"
+        except Exception as retry_e:
+            return f"Error processing with Groq API (retry): {retry_e}"
+            
     except Exception as e:
-        print(f"Error processing with API: {e}")  # Debug log
-        return f"Error processing with API: {e}"
+        error_msg = f"Error processing with Groq API: {e}"
+        print(error_msg)
+        return error_msg
 
 
 # ===================== Convert Weight Function =====================
 def convert_weight_to_kg(weight_str):
-    """
-    Convert weight from qtl or tons to kg.
-    - If the unit is 'qtl' (or any variation like 'Qtl', 'QTL'), multiply the weight by 100 to convert to kg.
-    - If the unit is 'ton' (or any variation like 'TON', 'tons'), multiply the weight by 1000 to convert to kg.
-    - If the unit is 'kg' (or any variation like 'KG', 'Kg'), no conversion is needed.
-    """
+    """Convert weight from qtl or tons to kg."""
     weight_str = weight_str.replace(",", "")  # Remove commas from the number
     weight_parts = weight_str.split()  # Split into value and unit
 
@@ -115,94 +216,148 @@ def process_multiple_pdfs(pdf_paths, api_key, output_folder, filename):
     # Ensure the output folder exists
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
-        print(f"Created output folder: {output_folder}")  # Debug log
+        print(f"Created output folder: {output_folder}")
 
-    combined_data = []
+    all_rows = []  # Store all flattened rows from all files
 
     for pdf_path in pdf_paths:
-        print(f"Processing PDF: {pdf_path}")  # Debug log
+        print(f"Processing PDF: {pdf_path}")
 
         text = extract_text_from_pdf(pdf_path)
         if not text.strip():
             print(f"No text extracted from {pdf_path}")
             continue
 
-        result = process_with_gemini(text, api_key)
+        result = process_with_groq(text, api_key)
         if not result or "Error" in result:
-            print(f"Error processing {pdf_path} with LLM")
+            print(f"Error processing {pdf_path} with Groq API")
             continue
 
         try:
-            # Clean the response (remove markdown formatting)
-            cleaned_result = result.strip().strip("```json").strip("```")
-            extracted_data = json.loads(cleaned_result)
-            combined_data.extend(extracted_data)  # Add data to the combined list
+            # Clean the response and extract JSON
+            cleaned_result = result.strip().replace('```json', '').replace('```', '')
+            
+            # Find JSON array boundaries
+            json_start = cleaned_result.find('[')
+            json_end = cleaned_result.rfind(']') + 1
+            
+            if json_start != -1 and json_end != -1:
+                json_str = cleaned_result[json_start:json_end]
+                extracted_data = json.loads(json_str)
+                
+                # Process each invoice in the response
+                for invoice_idx, invoice in enumerate(extracted_data):
+                    print(f"Processing invoice {invoice_idx + 1}/{len(extracted_data)} from {pdf_path}")
+                    
+                    if 'items' in invoice and invoice['items']:
+                        print(f"Found {len(invoice['items'])} items in invoice {invoice.get('invoice_number', 'N/A')}")
+                        # Create a row for each item
+                        for item_idx, item in enumerate(invoice['items']):
+                            row = {
+                                'company_name': invoice.get('company_name', 'N/A'),
+                                'invoice_number': invoice.get('invoice_number', 'N/A'),
+                                'invoice_date': invoice.get('invoice_date', 'N/A'),
+                                'fssai_number': invoice.get('fssai_number', 'N/A'),
+                                'description': item.get('description', 'N/A'),
+                                'hsn_code': item.get('hsn_code', 'N/A'),
+                                'quantity': item.get('quantity', 'N/A'),
+                                'weight': item.get('weight', 'N/A'),
+                                'rate': item.get('rate', 'N/A'),
+                                'amount': item.get('amount', 'N/A')
+                            }
+                            all_rows.append(row)
+                            print(f"  Item {item_idx + 1}: {item.get('description', 'N/A')} - Total rows now: {len(all_rows)}")
+                    else:
+                        print(f"No items found in invoice {invoice.get('invoice_number', 'N/A')}, adding invoice-only row")
+                        # If no items, add invoice-level data only
+                        row = {
+                            'company_name': invoice.get('company_name', 'N/A'),
+                            'invoice_number': invoice.get('invoice_number', 'N/A'),
+                            'invoice_date': invoice.get('invoice_date', 'N/A'),
+                            'fssai_number': invoice.get('fssai_number', 'N/A'),
+                            'description': 'N/A',
+                            'hsn_code': 'N/A',
+                            'quantity': 'N/A',
+                            'weight': 'N/A',
+                            'rate': 'N/A',
+                            'amount': 'N/A'
+                        }
+                        all_rows.append(row)
+                        print(f"  Added invoice-only row - Total rows now: {len(all_rows)}")
+            else:
+                print(f"No valid JSON found in response for {pdf_path}")
+                continue
+                
         except Exception as e:
-            print(f"Error parsing LLM response for {pdf_path}: {e}")
+            print(f"Error parsing Groq API response for {pdf_path}: {e}")
             continue
 
-    # Save combined data to a single JSON file
-    output_file = os.path.join(output_folder, "combined_data.json")
-    print(f"Saving combined JSON file to: {output_file}")  # Debug log
+    print(f"Total rows collected: {len(all_rows)}")
+    
+    if not all_rows:
+        print("No data extracted from any files")
+        return "No data extracted"
 
-    try:
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(combined_data, f, indent=4)
-        print(f"Combined JSON file saved successfully.")  # Debug log
-    except Exception as e:
-        print(f"Error saving combined JSON file: {e}")
-        return "Error saving combined JSON file"
-
-    # Convert combined JSON to Excel
-    excel_path = convert_json_to_excel(output_folder, filename)
+    # Convert to Excel with append functionality
+    excel_path = convert_json_to_excel_direct(all_rows, output_folder, filename)
     return excel_path if excel_path else "Error saving Excel file"
 
 
-# ===================== Convert JSON to Excel =====================
-def convert_json_to_excel(output_folder, filename="combined_invoice_data.xlsx"):
-    json_file = os.path.join(output_folder, "combined_data.json")
-    print(f"Loading JSON file: {json_file}")  # Debug log
-
-    try:
-        with open(json_file, "r", encoding="utf-8") as file:
-            file_content = file.read().strip().strip("```json").strip("```")
-            print(f"File content: {file_content}")  # Debug log
-
-            json_data = json.loads(file_content)
-    except Exception as e:
-        print(f"Error processing JSON file: {e}")
-        return None
-
-    if json_data:
-        print(f"Combined data: {json_data}")  # Debug log
-        df = pd.DataFrame(json_data)
-
-        # Convert weights in the 'Weight' column
-        if "Weight" in df.columns:
-            df["Weight"] = df["Weight"].apply(convert_weight_to_kg)
-
-        # Save the data as Excel
-        excel_path = os.path.join(output_folder, filename)
-        try:
-            df.to_excel(excel_path, index=False, engine="openpyxl")
-            print(f"Excel file saved at {excel_path}")
-        except Exception as e:
-            print(f"Error saving Excel file: {e}")
-            return None
-
-        # Delete JSON files after successful Excel creation
-        try:
-            for file in os.listdir(output_folder):
-                if file.endswith(".json"):
-                    os.remove(os.path.join(output_folder, file))
-                    print(f"Deleted JSON file: {file}")
-        except Exception as e:
-            print(f"Error deleting JSON files: {e}")
-
-        return excel_path
-    else:
+# ===================== Convert Data to Excel =====================
+def convert_json_to_excel_direct(data_rows, output_folder, filename="combined_invoice_data.xlsx"):
+    excel_path = os.path.join(output_folder, filename)
+    
+    if not data_rows:
         print("No data to save.")
         return None
+
+    print(f"Converting {len(data_rows)} rows to Excel")
+    new_df = pd.DataFrame(data_rows)
+    print(f"DataFrame created with shape: {new_df.shape}")
+    
+    # Convert weights
+    if "weight" in new_df.columns:
+        new_df["weight"] = new_df["weight"].apply(lambda x: convert_weight_to_kg(str(x)) if x != 'N/A' else x)
+
+    # Always append to existing file or create new one
+    try:
+        if os.path.exists(excel_path):
+            print(f"Excel file exists, reading existing data...")
+            existing_df = pd.read_excel(excel_path, engine="openpyxl")
+            print(f"Existing data shape: {existing_df.shape}")
+            
+            # Ensure columns match
+            for col in new_df.columns:
+                if col not in existing_df.columns:
+                    existing_df[col] = 'N/A'
+            for col in existing_df.columns:
+                if col not in new_df.columns:
+                    new_df[col] = 'N/A'
+            
+            # Reorder columns to match
+            new_df = new_df[existing_df.columns]
+            
+            combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            print(f"Combined data shape: {combined_df.shape}")
+        else:
+            print(f"Creating new Excel file")
+            combined_df = new_df
+
+        # Save to Excel
+        combined_df.to_excel(excel_path, index=False, engine="openpyxl")
+        print(f"Excel file saved successfully with {len(combined_df)} total rows")
+        return excel_path
+        
+    except Exception as e:
+        print(f"Error in Excel operations: {e}")
+        # Fallback: save new data only
+        try:
+            new_df.to_excel(excel_path, index=False, engine="openpyxl")
+            print(f"Fallback: Saved new data only with {len(new_df)} rows")
+            return excel_path
+        except Exception as e2:
+            print(f"Fallback also failed: {e2}")
+            return None
 
 
 # ===================== Main Execution (For Electron) =====================
