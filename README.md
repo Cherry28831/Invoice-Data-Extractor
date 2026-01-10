@@ -1,83 +1,288 @@
-# 🧾 Invoice Data Extractor
+# 🧾 Invoice Data Extractor (v2.0.0)
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/Cherry28831/Invoice-Data-Extractor)
 ![MIT License](https://img.shields.io/github/license/Cherry28831/Invoice-Data-Extractor)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![AI Engine](https://img.shields.io/badge/LLM-Groq%20%7C%20LLaMA%203.1-green)
 
-A lightweight yet powerful desktop app that extracts data from invoices in **PDF** or **JPG** format with over **95% accuracy**. This is possible using a mix of **OCR**, **Generative AI (Gemini)**, and smart processing — all bundled into a single `.exe` file!
+A **desktop-based AI invoice processing engine** that extracts structured, item-level invoice data from **PDF and JPG invoices** using a **hybrid OCR + LLM pipeline**, and exports it directly to **Excel**.
 
----
-
-## 📦 Features
-
-- 💡 Intelligent extraction using **Google Generative AI**
-- 📄 Supports **PDF** and **JPG** invoice formats
-- 🧠 Uses `pytesseract`, `pdfplumber`, and `pdf2image`
-- 📊 Exports structured data to **Excel**
-- 🖼️ Intuitive **Tkinter GUI**
-- ⚙️ Backend logic is bundled — **no additional installation needed!**
+✔ Tested on **1000+ real-world invoices**
+✔ Achieved **~91% field-level accuracy**
+✔ Packaged as a **single plug-and-play `.exe`**
 
 ---
 
-## 🧠 Tech Stack & Libraries Used
+## 🎯 Problem This Solves
 
-- [`pdfplumber`](https://github.com/jsvine/pdfplumber)
-- [`pdf2image`](https://github.com/Belval/pdf2image)
-- [`pytesseract`](https://github.com/madmaze/pytesseract)
-- [`google-generativeai`](https://github.com/google/generative-ai-python)
-- `tkinter` (GUI)
-- `pandas`, `openpyxl` (Excel generation)
+Invoice data extraction is messy because:
+
+* PDFs vary wildly in layout
+* Many PDFs are scanned images
+* Tables break traditional parsers
+* OCR alone is not enough
+* Rule-based systems don’t scale
+
+This tool solves that by combining:
+
+* **Deterministic OCR & preprocessing**
+* **LLM-based semantic understanding**
+* **Structured output enforcement**
+* **Excel-ready data flattening**
 
 ---
 
-🧠 How It Works
-- PDFs are read using pdfplumber. If text extraction fails, it switches to OCR using pytesseract.
-- Extracted text is sent to the Gemini API with a prompt for field extraction.
-- Parsed response is saved to combined_data.json and converted to an Excel file.
-- All weights are converted to kilograms.
+## ✨ What’s New in v2.0.0
 
-> ✅ Since we bundled `backend.py` into the final executable, there is **no need to install any libraries** or set up Python locally. Everything runs from the `.exe` — plug and play!
+This release is a **major backend upgrade**.
+
+### 🔥 Major Improvements
+
+* **Groq API integration**
+
+  * Replaced Gemini with **Groq (LLaMA-3.1-8B-Instant)**
+  * Faster inference, lower latency, better consistency
+
+* **Advanced OCR Pipeline**
+
+  * OpenCV preprocessing (denoise, CLAHE, thresholding)
+  * High-DPI PDF to image conversion
+  * Custom Tesseract OCR configuration
+
+* **Robust PDF Handling**
+
+  * `pdfplumber` text extraction first
+  * Automatic OCR fallback if text is missing
+
+* **Flattened Excel Output**
+
+  * Each invoice item becomes **one row**
+  * Invoice-level fields repeated per item
+  * Suitable for accounting & analytics
+
+* **Append to Existing Excel**
+
+  * New invoices can be appended to existing files
+  * No overwriting, no manual merges
+
+---
+
+## 🧠 System Architecture
+
+```
+PDF / JPG
+   │
+   ├─► pdfplumber (text PDFs)
+   │
+   └─► OpenCV + Tesseract (scanned PDFs / images)
+            │
+            ▼
+     Cleaned invoice text
+            │
+            ▼
+     Groq LLM (LLaMA-3.1-8B)
+            │
+            ▼
+     Structured JSON (validated)
+            │
+            ▼
+     Flattened rows
+            │
+            ▼
+     Excel (.xlsx)
+```
+
+---
+
+## 🧠 How the Extraction Works (Step-by-Step)
+
+### 1️⃣ PDF / Image Ingestion
+
+* PDFs are first parsed using `pdfplumber`
+* If no usable text is found → OCR pipeline is triggered
+* JPG files always go through OCR
+
+### 2️⃣ OCR Enhancement (Key to Accuracy)
+
+Each page/image undergoes:
+
+* Grayscale conversion
+* Noise removal
+* CLAHE contrast enhancement
+* Adaptive thresholding
+* Custom Tesseract config for invoice symbols & numbers
+
+This significantly improves OCR quality on:
+
+* Scanned invoices
+* Low-contrast documents
+* Poorly printed bills
+
+---
+
+### 3️⃣ LLM-Based Data Extraction (Groq)
+
+Extracted text is sent to Groq with a **strict, structured prompt** that enforces:
+
+* Exact text extraction (no hallucination)
+* Fixed fields:
+
+  * Company name
+  * Invoice number
+  * Invoice date
+  * FSSAI number
+  * Item-level details
+* JSON-only response
+* Clean numeric values
+* Standardized date format
+
+**Model used:**
+`llama-3.1-8b-instant`
+
+---
+
+### 4️⃣ Response Cleaning & Validation
+
+* Markdown fences removed
+* JSON boundaries detected manually
+* Invalid responses discarded
+* Safe fallback handling for malformed outputs
+
+---
+
+### 5️⃣ Data Flattening Logic
+
+* Each invoice item becomes **one Excel row**
+* Invoice-level fields are repeated per item
+* If no items are found → invoice-level row is still created
+
+This makes the output:
+
+* Pivot-friendly
+* BI-ready
+* Accounting-friendly
+
+---
+
+### 6️⃣ Excel Export (Append-Safe)
+
+* If Excel file exists → data is appended
+* Column mismatches are auto-handled
+* Weights are converted to **kilograms**
+* File is saved using `openpyxl`
+
+---
+
+## 📊 Accuracy & Testing
+
+* ✅ Tested on **1000+ real invoices**
+* 📈 Achieved **~91% accuracy**
+* Includes:
+
+  * Printed PDFs
+  * Scanned PDFs
+  * Multi-item invoices
+  * Inconsistent layouts
+
+Accuracy measured on:
+
+* Invoice number
+* Date
+* Item description
+* Quantity
+* Amount
+* HSN codes (when present)
+
+---
+
+## 🧪 Supported Input Formats
+
+| Format        | Method       |
+| ------------- | ------------ |
+| PDF (text)    | pdfplumber   |
+| PDF (scanned) | OCR fallback |
+| JPG           | OCR          |
+
+---
+
+## 📤 Output
+
+### Excel File (`.xlsx`)
+
+Each row represents **one invoice item**.
+
+Columns include:
+
+* company_name
+* invoice_number
+* invoice_date
+* fssai_number
+* description
+* hsn_code
+* quantity
+* weight (kg)
+* rate
+* amount
 
 ---
 
 ## 🚀 Getting Started
 
-### 🔽 Download the Executable
+### 🔽 Download Executable
 
-[⬇ Click here to download the `.exe` file (v1.0.1)](https://github.com/Cherry28831/Invoice-Data-Extractor/releases/tag/v1.0.1)
+👉 **[Download v2.0.0](https://github.com/Cherry28831/Invoice-Data-Extractor/releases/tag/v2.0.0)**
 
----
-
-### 🔑 Required: Google Gemini API Key
-
-This app requires access to Google's Generative AI API (Gemini). You can get a **free API key** by following the guide below:
-
-📄 [Read API Key Setup Guide](https://github.com/Cherry28831/Invoice-Data-Extractor/blob/main/API%20Documentation.docx)
+No Python.
+No setup.
+Just run.
 
 ---
 
-## 🛠 How to Use
+### 🔑 Groq API Key (Required)
 
-1. Generate a free API key from Google Cloud Console.
-2. Download and run the `.exe` file.
-3. When prompted, paste your API key.
-4. Upload a PDF or JPG invoice.
-5. The app will extract the data and save it to Excel!
+1. Create a Groq account
+2. Generate an API key
+3. Paste it when prompted by the app
 
 ---
 
-📧 Output
-- `combined_data.json`: Raw structured data
-- `combined_invoice_data.xlsx`: Final Excel export
-- JSON is deleted after Excel is generated.
+## 🛠 Usage Flow
+
+1. Launch the `.exe`
+2. Enter Groq API key
+3. Select one or multiple PDF/JPG invoices
+4. Choose output Excel file (new or existing)
+5. Extraction starts automatically
+6. Excel file is generated/appended
 
 ---
 
-## 🧪 Want to Build from Source?
+## 🧪 Build From Source
 
+```bash
 git clone https://github.com/Cherry28831/Invoice-Data-Extractor.git
 cd Invoice-Data-Extractor
 pip install -r requirements.txt
-npm run dist  # if using Electron or similar packaging tools
+cd backend
+pyinstaller invoice-backend.spec
+cd ..
+npm start 
+npm run dist
+```
 
-Open for contributions, forks, and feedback!
+---
+
+## 🌱 Future Roadmap
+
+* Vendor auto-classification
+* GST / tax breakup extraction
+* CSV & ERP exports
+* Multi-language invoices
+* Cloud + desktop hybrid mode
+
+---
+
+## 🤝 Contributions
+
+This project is actively evolving.
+Contributions, optimizations, and feedback are welcome.
